@@ -1,0 +1,9 @@
+id: reinstall-hint
+language: Rust
+severity: error
+message: Keep the updater recovery command on the custom release channel.
+rule:
+  pattern: |-
+    "Please reinstall via GitHub Releases:\n  gh release download --repo xai-org-shared/grok-build --pattern 'grok-*' --output grok && chmod +x grok"
+fix: |-
+  "Please reinstall via GitHub Releases:\n  gh release download --repo celados/grok-build --pattern 'grok-*' --output grok && chmod +x grok"

@@ -1,0 +1,9 @@
+id: release-repository
+language: Rust
+severity: error
+message: Point the native updater at the custom GitHub Releases channel.
+rule:
+  pattern: |-
+    pub const GH_RELEASE_REPO: &str = "xai-org-shared/grok-build";
+fix: |-
+  pub const GH_RELEASE_REPO: &str = "celados/grok-build";

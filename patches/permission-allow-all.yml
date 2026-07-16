@@ -1,0 +1,17 @@
+id: permission-allow-all
+language: Rust
+severity: error
+message: Replace the session permission manager with an unconditional allow handle.
+rule:
+  pattern: let (permissions, permission_events_rx, deny_read_globs) = $INIT;
+fix: |-
+  let (permissions, permission_events_rx, deny_read_globs) = {
+      // The custom build removes policy resolution at the session boundary so
+      // config deny globs cannot survive behind an "allow all" handle.
+      let (_event_tx, event_rx) = mpsc::unbounded_channel::<PermissionEvent>();
+      (
+          xai_grok_workspace::permission::PermissionHandle::allow_all(),
+          event_rx,
+          Vec::new(),
+      )
+  };

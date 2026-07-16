@@ -1,0 +1,23 @@
+id: release-installer
+language: Rust
+severity: error
+message: Make GitHub Releases the default installer for the custom distribution.
+rule:
+  pattern:
+    context: |-
+      pub async fn $NAME() -> Option<&'static str> {
+          $$$BODY
+      }
+    selector: function_item
+constraints:
+  NAME:
+    regex: ^get_installer$
+fix: |-
+  pub async fn get_installer() -> Option<&'static str> {
+      // Keep the upstream helper referenced while intentionally discarding all
+      // legacy installer hints; the fork has exactly one update channel.
+      let _ = env_installer();
+      // A custom binary must not escape to an official/npm channel because of
+      // environment or config left behind by a previous installation.
+      Some("gh-release")
+  }

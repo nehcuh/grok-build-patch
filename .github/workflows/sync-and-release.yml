@@ -1,0 +1,128 @@
+name: Sync upstream and release
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: Rebuild even when upstream is unchanged
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: sync-and-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve upstream and version
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE_RELEASE: ${{ inputs.force_release || false }}
+        run: |
+          upstream="$(git ls-remote https://github.com/xai-org/grok-build.git refs/heads/main | awk '{print $1}')"
+          last_upstream="$(jq -r '.upstream' versions.jsonl | tail -1)"
+          last_version="$(jq -r '.version' versions.jsonl | tail -1)"
+          release=false
+          append=false
+
+          if [[ "$upstream" == "$last_upstream" && "$FORCE_RELEASE" != true ]]; then
+            if ! gh release view "v$last_version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              release=true
+              version="$last_version"
+            else
+              version="$last_version"
+            fi
+          else
+            IFS=. read -r major minor patch <<< "$last_version"
+            version="$major.$minor.$((patch + 1))"
+            release=true
+            append=true
+          fi
+
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "append=$append" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+
+      - name: Install AST patcher
+        if: steps.plan.outputs.release == 'true'
+        run: brew install ast-grep
+
+      - name: Prepare upstream source
+        if: steps.plan.outputs.release == 'true'
+        run: ./build.sh --prepare --upstream-ref "${{ steps.plan.outputs.upstream }}"
+
+      - uses: actions/cache@v6
+        if: steps.plan.outputs.release == 'true'
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            sources/target/release/.fingerprint
+            sources/target/release/build
+            sources/target/release/deps
+          key: grok-macos-arm64-${{ hashFiles('sources/Cargo.lock') }}
+          restore-keys: grok-macos-arm64-
+
+      - name: Build macOS arm64 release
+        if: steps.plan.outputs.release == 'true'
+        run: ./build.sh --upstream-ref "${{ steps.plan.outputs.upstream }}" --version "${{ steps.plan.outputs.version }}"
+
+      - name: Record build mapping
+        if: steps.plan.outputs.release == 'true' && steps.plan.outputs.append == 'true'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+          UPSTREAM: ${{ steps.plan.outputs.upstream }}
+        run: |
+          jq -nc \
+            --arg version "$VERSION" \
+            --arg upstream "$UPSTREAM" \
+            --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg run "$GITHUB_RUN_ID" \
+            '{version:$version,upstream:$upstream,built_at:$built_at,run:$run}' >> versions.jsonl
+          git config user.name "celados-release-bot"
+          git config user.email "huodong.work@gmail.com"
+          git add versions.jsonl
+          git commit -m "release: record v$VERSION from upstream ${UPSTREAM:0:7}"
+          git push origin HEAD:main
+
+      - name: Publish GitHub Release
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          UPSTREAM: ${{ steps.plan.outputs.upstream }}
+        run: |
+          gh release create "v$VERSION" "dist/grok-$VERSION-macos-aarch64" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target main \
+            --title "Grok Build $VERSION" \
+            --notes "Permission-free macOS arm64 build from xai-org/grok-build@$UPSTREAM."
+
+      - name: Open maintenance issue
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: Automated upstream build failed
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""')"
+          if [[ -z "$existing" ]]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" \
+              --body "Inspect run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID; upstream may have invalidated an AST patch seam."
+          fi

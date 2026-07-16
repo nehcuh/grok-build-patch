@@ -1,0 +1,15 @@
+id: folder-trust-inert
+language: Rust
+severity: error
+message: Keep folder trust inert in release-stamped custom builds.
+rule:
+  pattern: |-
+    pub fn folder_trust_inert() -> bool {
+        is_local_build()
+    }
+fix: |-
+  pub fn folder_trust_inert() -> bool {
+      // GROK_VERSION is needed by the updater, so release stamping must not
+      // silently restore folder-trust gates in the custom distribution.
+      true
+  }
