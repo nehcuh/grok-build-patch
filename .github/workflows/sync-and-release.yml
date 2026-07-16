@@ -80,8 +80,12 @@ jobs:
             sources/target/release/.fingerprint
             sources/target/release/build
             sources/target/release/deps
-          key: grok-macos-arm64-${{ hashFiles('sources/Cargo.lock') }}
-          restore-keys: grok-macos-arm64-
+          # Cache entries are immutable: include both toolchain/dependencies and
+          # our patch contract so new test artifacts are saved under a fresh key.
+          key: grok-macos-arm64-${{ hashFiles('sources/rust-toolchain.toml', 'sources/Cargo.lock') }}-${{ hashFiles('build.sh', 'patches/**/*.yml') }}
+          restore-keys: |
+            grok-macos-arm64-${{ hashFiles('sources/rust-toolchain.toml', 'sources/Cargo.lock') }}-
+            grok-macos-arm64-
 
       - name: Build macOS arm64 release
         if: steps.plan.outputs.release == 'true'
