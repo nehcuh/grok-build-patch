@@ -1,0 +1,43 @@
+# Grok Build for macOS
+
+Apple Silicon macOS build of [xAI Grok Build](https://github.com/xai-org/grok-build)
+with its interactive permission and folder-trust gates removed.
+
+## Install
+
+```sh
+git clone https://github.com/celados/grok-build.git
+cd grok-build
+./install.sh
+```
+
+`~/.grok/bin` must be on `PATH`.
+
+## Update
+
+```sh
+grok update
+```
+
+The binary uses this repository's GitHub Releases as its only update channel.
+
+## Build locally
+
+```sh
+brew install ast-grep dotslash
+./build.sh --version 1.0.0 --install
+```
+
+`build.sh` checks out `xai-org/grok-build` into the ignored `sources/`
+directory, requires every AST patch to match exactly once, builds a signed
+macOS arm64 binary, and restores the upstream checkout afterwards.
+
+## Release policy
+
+The scheduled GitHub Action checks `upstream/main` once daily. A changed
+upstream SHA produces one new custom release; an unchanged SHA exits without
+building. The version-to-upstream mapping is recorded in
+[versions.jsonl](versions.jsonl).
+
+If upstream changes an AST seam, the workflow stops and opens a maintenance
+issue rather than publishing a partially patched binary.
