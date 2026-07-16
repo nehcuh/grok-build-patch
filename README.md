@@ -9,7 +9,9 @@ with its interactive permission and folder-trust gates removed.
 curl -fsSL https://raw.githubusercontent.com/celados/grok-build/main/install.sh | bash
 ```
 
-The installer requires the GitHub CLI (`gh`). `~/.grok/bin` must be on `PATH`.
+The installer downloads the latest GitHub Release directly, verifies that the
+binary starts before replacing an existing installation, and configures PATH
+for Fish, Zsh, or Bash. No repository clone or GitHub CLI is required.
 
 ## Update
 
