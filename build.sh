@@ -57,7 +57,7 @@ if [[ "$PREPARE_ONLY" == true ]]; then
   exit 0
 fi
 
-for command in ast-grep jq cargo rustfmt; do
+for command in ast-grep jq cargo rustfmt python3; do
   command -v "$command" >/dev/null || {
     echo "Missing required command: $command" >&2
     exit 1
@@ -72,6 +72,7 @@ patches/reinstall-hint.yml crates/codegen/xai-grok-update/src/auto_update.rs
 patches/release-installer.yml crates/codegen/xai-grok-update/src/auto_update.rs
 patches/runtime/deleted-cwd/regression.yml crates/codegen/xai-grok-tools/src/computer/local/terminal.rs
 patches/runtime/bash-workdir-tilde/regression.yml crates/codegen/xai-grok-tools/src/implementations/opencode/bash/mod.rs
+patches/runtime/prompt-background-tasks/regression.yml crates/codegen/xai-grok-agent/src/prompt/template.rs
 "
 
 RUNTIME_CWD_PATCH="patches/runtime/deleted-cwd/recover.yml"
@@ -80,6 +81,10 @@ RUNTIME_CWD_SOURCE="crates/codegen/xai-grok-tools/src/computer/local/terminal.rs
 RUNTIME_TILDE_PATCH="patches/runtime/bash-workdir-tilde/expand.yml"
 RUNTIME_TILDE_SATISFIED="patches/runtime/bash-workdir-tilde/satisfied.yml"
 RUNTIME_TILDE_SOURCE="crates/codegen/xai-grok-tools/src/implementations/opencode/bash/mod.rs"
+RUNTIME_PROMPT_DIR="patches/runtime/prompt-background-tasks"
+RUNTIME_PROMPT_SOURCE="crates/codegen/xai-grok-agent/templates/prompt.md"
+RUNTIME_PROMPT_ENCRYPTED="crates/codegen/xai-grok-agent/src/prompt/prompt_encrypted.rs"
+APPLY_PROMPT_TEXT_PATCH=false
 ACTIVE_PATCH_SPECS="$REQUIRED_PATCH_SPECS"
 
 assert_patch_seams() {
@@ -120,6 +125,30 @@ apply_conditional_patch() {
 apply_conditional_patch "Deleted-cwd" "$RUNTIME_CWD_PATCH" "$RUNTIME_CWD_SATISFIED" "$RUNTIME_CWD_SOURCE"
 apply_conditional_patch "Bash workdir tilde" "$RUNTIME_TILDE_PATCH" "$RUNTIME_TILDE_SATISFIED" "$RUNTIME_TILDE_SOURCE"
 
+text_count() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+
+needle = open(sys.argv[1], encoding="utf-8").read()
+haystack = open(sys.argv[2], encoding="utf-8").read()
+print(haystack.count(needle))
+PY
+}
+
+# Text patches carry the same three-state contract as AST patches, for files
+# ast-grep cannot parse (jinja templates, prose).
+satisfied_count="$(text_count "$ROOT_DIR/$RUNTIME_PROMPT_DIR/satisfied.md" "$SOURCES_DIR/$RUNTIME_PROMPT_SOURCE")"
+apply_count="$(text_count "$ROOT_DIR/$RUNTIME_PROMPT_DIR/section.old.md" "$SOURCES_DIR/$RUNTIME_PROMPT_SOURCE")"
+if [[ "$satisfied_count" == "1" ]]; then
+  echo "skip: upstream already satisfies Background-tasks prompt"
+elif [[ "$satisfied_count" == "0" && "$apply_count" == "1" ]]; then
+  APPLY_PROMPT_TEXT_PATCH=true
+  echo "apply: $RUNTIME_PROMPT_DIR/section.new.md -> $RUNTIME_PROMPT_SOURCE"
+else
+  echo "Background-tasks prompt patch contract drifted: apply=$apply_count satisfied=$satisfied_count" >&2
+  exit 1
+fi
+
 if [[ "$CHECK_ONLY" == true ]]; then
   exit 0
 fi
@@ -133,7 +162,7 @@ if [[ "$(uname -s)" != Darwin || "$(uname -m)" != arm64 ]]; then
   exit 1
 fi
 
-PATCHED_FILES="$(echo "$ACTIVE_PATCH_SPECS" | awk 'NF && !seen[$2]++ { print $2 }')"
+PATCHED_FILES="$(echo "$ACTIVE_PATCH_SPECS" | awk 'NF && !seen[$2]++ { print $2 }') $RUNTIME_PROMPT_SOURCE $RUNTIME_PROMPT_ENCRYPTED"
 for source in $PATCHED_FILES; do
   if ! git -C "$SOURCES_DIR" diff --quiet HEAD -- "$source"; then
     echo "Refusing to patch a modified source file: $source" >&2
@@ -152,6 +181,24 @@ echo "$ACTIVE_PATCH_SPECS" | while read -r rule source; do
   ast-grep scan --rule "$ROOT_DIR/$rule" --info --update-all "$SOURCES_DIR/$source"
 done
 
+if [[ "$APPLY_PROMPT_TEXT_PATCH" == true ]]; then
+  python3 - "$ROOT_DIR/$RUNTIME_PROMPT_DIR/section.old.md" "$ROOT_DIR/$RUNTIME_PROMPT_DIR/section.new.md" "$SOURCES_DIR/$RUNTIME_PROMPT_SOURCE" <<'PY'
+import sys
+
+old = open(sys.argv[1], encoding="utf-8").read()
+new = open(sys.argv[2], encoding="utf-8").read()
+path = sys.argv[3]
+text = open(path, encoding="utf-8").read()
+if text.count(old) != 1:
+    raise SystemExit("prompt section old text must appear exactly once")
+open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
+PY
+fi
+
+# Templates ship XOR-encrypted in the binary; regenerate after any prompt
+# change. Deterministic, so an unchanged template re-encrypts identically.
+( cd "$SOURCES_DIR/crates/codegen/xai-grok-agent" && python3 scripts/encrypt_templates.py )
+
 assert_postcondition() {
   local name="$1" satisfied="$2" source="$3"
   local count
@@ -165,6 +212,12 @@ assert_postcondition() {
 assert_postcondition "Deleted-cwd recovery" "$RUNTIME_CWD_SATISFIED" "$RUNTIME_CWD_SOURCE"
 assert_postcondition "Bash workdir tilde expansion" "$RUNTIME_TILDE_SATISFIED" "$RUNTIME_TILDE_SOURCE"
 
+postcondition_text="$(text_count "$ROOT_DIR/$RUNTIME_PROMPT_DIR/satisfied.md" "$SOURCES_DIR/$RUNTIME_PROMPT_SOURCE")"
+if [[ "$postcondition_text" != "1" ]]; then
+  echo "Background-tasks prompt postcondition expected 1 match, found $postcondition_text" >&2
+  exit 1
+fi
+
 (
   cd "$SOURCES_DIR"
   cargo fmt -p xai-grok-shell -p xai-grok-workspace -p xai-grok-update -- --check
@@ -175,6 +228,7 @@ assert_postcondition "Bash workdir tilde expansion" "$RUNTIME_TILDE_SATISFIED" "
     crates/codegen/xai-grok-tools/src/implementations/opencode/bash/mod.rs
   cargo test --release -p xai-grok-tools test_persistent_shell_recovers_deleted_cwd --lib
   cargo test --release -p xai-grok-tools workdir_expands_tilde_to_home --lib
+  cargo test --release -p xai-grok-agent test_background_tasks_defines_callback_and_poll --lib
   # Upstream enables release incremental artifacts; disabling them keeps the
   # build and cache inside GitHub's hosted-runner disk boundary.
   CARGO_INCREMENTAL=0 GROK_VERSION="$VERSION" cargo build --release -p xai-grok-pager-bin
