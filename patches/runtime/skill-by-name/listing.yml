@@ -1,7 +1,7 @@
 id: skill-by-name-listing-header
 language: Rust
 severity: error
-message: Skill listing header must tell the model to invoke the skill tool by name, not read_file Absolute paths.
+message: Skill listing header must require the skill tool by name.
 rule:
   pattern: |-
     fn listing_header(_tool_name: &str) -> String {
@@ -9,12 +9,8 @@ rule:
     }
 fix: |-
   fn listing_header(tool_name: &str) -> String {
-      // Prefer name-based load (Claude Skill tool pattern). Absolute path in
-      // each row is diagnostic only — models rewrite paths under workspace.
       format!(
           "The following skills are available. When a skill matches the task, \
-           call the `{tool_name}` tool with the skill name (e.g. name: \"ctx\"). \
-           Do NOT read SKILL.md via read_file — copy Absolute path only if \
-           debugging; never re-root paths under the workspace.\n\n"
+           use the `{tool_name}` tool with the skill name.\n\n"
       )
   }

@@ -1,0 +1,7 @@
+id: skill-by-name-read-file-param-satisfied
+language: Rust
+severity: info
+message: target_file schemars already requires absolute paths unchanged.
+rule:
+  kind: string_literal
+  regex: Absolute paths must be passed unchanged

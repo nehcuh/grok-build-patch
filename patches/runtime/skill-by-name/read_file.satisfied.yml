@@ -1,7 +1,7 @@
 id: skill-by-name-read-file-absolute-satisfied
 language: Rust
 severity: info
-message: read_file description already forbids absolute path re-rooting.
+message: read_file description already requires absolute paths to be passed unchanged.
 rule:
   kind: string_literal
-  regex: pass it VERBATIM
+  regex: Absolute paths must be passed unchanged

@@ -1,7 +1,7 @@
 id: skill-by-name-default-toolset
 language: Rust
 severity: error
-message: Register OpenCode skill tool in default grok-build toolset so models load skills by name (Claude-style), not via read_file path rewriting.
+message: Register OpenCode skill tool in default grok-build toolset.
 rule:
   pattern: |-
     fn default_grok_build_toolset() -> ToolServerConfig {
@@ -19,8 +19,6 @@ fix: |-
           tools: vec![
               $$$TOOLS
               (&grok_build::UpdateGoalTool).into(),
-              // Claude-style: load SKILL.md by name. Path-based read_file is
-              // error-prone (models re-root Absolute path under workspace).
               (&opencode::OpenCodeSkillTool).into(),
           ],
           behavior_preset: None,
