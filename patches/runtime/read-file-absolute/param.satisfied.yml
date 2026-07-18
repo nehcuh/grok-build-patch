@@ -1,7 +1,7 @@
 id: read-file-absolute-param-satisfied
 language: Rust
 severity: info
-message: target_file schemars already requires absolute paths unchanged.
+message: target_file schemars already requires absolute path only (Claude Code FileReadTool).
 rule:
   kind: string_literal
-  regex: Absolute paths must be passed unchanged
+  regex: The absolute path to the file to read

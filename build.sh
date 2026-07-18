@@ -85,7 +85,7 @@ RUNTIME_PROMPT_DIR="patches/runtime/prompt-background-tasks"
 RUNTIME_PROMPT_SOURCE="crates/codegen/xai-grok-agent/templates/prompt.md"
 RUNTIME_PROMPT_ENCRYPTED="crates/codegen/xai-grok-agent/src/prompt/prompt_encrypted.rs"
 APPLY_PROMPT_TEXT_PATCH=false
-# read_file: absolute paths must be passed unchanged (skill lists give Absolute path).
+# read_file: absolute path only — Claude Code FileReadTool contract.
 RUNTIME_READ_ABS_DIR="patches/runtime/read-file-absolute"
 RUNTIME_READ_ABS_DESC_PATCH="$RUNTIME_READ_ABS_DIR/description.yml"
 RUNTIME_READ_ABS_DESC_SATISFIED="$RUNTIME_READ_ABS_DIR/description.satisfied.yml"

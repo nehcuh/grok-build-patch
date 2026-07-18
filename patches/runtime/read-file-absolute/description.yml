@@ -1,7 +1,7 @@
 id: read-file-absolute-description
 language: Rust
 severity: error
-message: read_file description — absolute paths must be passed unchanged.
+message: read_file description — file path must be absolute (Claude Code FileReadTool).
 rule:
   pattern: |-
     pub(crate) const DESCRIPTION_FULL: &str = r#"Read a file.
@@ -16,8 +16,7 @@ fix: |-
   pub(crate) const DESCRIPTION_FULL: &str = r#"Read a file.
 
   Usage:
-  - The target_file parameter can be a relative path in the workspace or an absolute path
-  - Absolute paths must be passed unchanged (must not be rewritten into a different root)
+  - The target_file parameter must be an absolute path, not a relative path
   - By default, it reads up to {max_lines_read} lines starting from the beginning of the file
   - Results are returned with line numbers starting at 1. The format is: LINE_NUMBER→LINE_CONTENT
   - This tool can read PDF files (.pdf), PowerPoint files (.pptx), Jupyter notebooks (.ipynb files), and image files (e.g. PNG, JPG, etc).

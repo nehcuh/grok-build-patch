@@ -44,9 +44,12 @@ version mapping.
 
 ## Runtime: read_file absolute path
 
-Skill loading is ordinary `read_file` with the Absolute path from the skill
-list. Models sometimes rewrite absolute paths under the workspace.
+Aligns Grok `read_file` with Claude Code `FileReadTool` path contract
+(`/Users/dio/Sources/agents/claude-code/src/tools/FileReadTool/`):
 
-`patches/runtime/read-file-absolute/` (conditional) only hardens the
-`read_file` tool description and `target_file` param: absolute paths must
-be passed unchanged.
+- description: `must be an absolute path, not a relative path`
+- param: `The absolute path to the file to read`
+
+`patches/runtime/read-file-absolute/` (conditional) rewrites only those
+two strings. Parameter name stays `target_file` (Grok); wording matches
+Claude Code.
