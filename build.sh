@@ -170,13 +170,6 @@ RUNTIME_PROMPT_DIR="patches/runtime/prompt-background-tasks"
 RUNTIME_PROMPT_SOURCE="crates/codegen/xai-grok-agent/templates/prompt.md"
 RUNTIME_PROMPT_ENCRYPTED="crates/codegen/xai-grok-agent/src/prompt/prompt_encrypted.rs"
 APPLY_PROMPT_TEXT_PATCH=false
-# read_file: absolute path only — Claude Code FileReadTool contract.
-RUNTIME_READ_ABS_DIR="patches/runtime/read-file-absolute"
-RUNTIME_READ_ABS_DESC_PATCH="$RUNTIME_READ_ABS_DIR/description.yml"
-RUNTIME_READ_ABS_DESC_SATISFIED="$RUNTIME_READ_ABS_DIR/description.satisfied.yml"
-RUNTIME_READ_ABS_PARAM_PATCH="$RUNTIME_READ_ABS_DIR/param.yml"
-RUNTIME_READ_ABS_PARAM_SATISFIED="$RUNTIME_READ_ABS_DIR/param.satisfied.yml"
-RUNTIME_READ_ABS_SOURCE="crates/codegen/xai-grok-tools/src/implementations/grok_build/read_file/mod.rs"
 ACTIVE_PATCH_SPECS="$REQUIRED_PATCH_SPECS"
 
 assert_patch_seams() {
@@ -216,8 +209,6 @@ apply_conditional_patch() {
 
 apply_conditional_patch "Deleted-cwd" "$RUNTIME_CWD_PATCH" "$RUNTIME_CWD_SATISFIED" "$RUNTIME_CWD_SOURCE"
 apply_conditional_patch "Bash workdir tilde" "$RUNTIME_TILDE_PATCH" "$RUNTIME_TILDE_SATISFIED" "$RUNTIME_TILDE_SOURCE"
-apply_conditional_patch "read_file absolute description" "$RUNTIME_READ_ABS_DESC_PATCH" "$RUNTIME_READ_ABS_DESC_SATISFIED" "$RUNTIME_READ_ABS_SOURCE"
-apply_conditional_patch "read_file absolute param" "$RUNTIME_READ_ABS_PARAM_PATCH" "$RUNTIME_READ_ABS_PARAM_SATISFIED" "$RUNTIME_READ_ABS_SOURCE"
 
 text_count() {
   python3 - "$1" "$2" <<'PY'
@@ -305,8 +296,6 @@ assert_postcondition() {
 
 assert_postcondition "Deleted-cwd recovery" "$RUNTIME_CWD_SATISFIED" "$RUNTIME_CWD_SOURCE"
 assert_postcondition "Bash workdir tilde expansion" "$RUNTIME_TILDE_SATISFIED" "$RUNTIME_TILDE_SOURCE"
-assert_postcondition "read_file absolute description" "$RUNTIME_READ_ABS_DESC_SATISFIED" "$RUNTIME_READ_ABS_SOURCE"
-assert_postcondition "read_file absolute param" "$RUNTIME_READ_ABS_PARAM_SATISFIED" "$RUNTIME_READ_ABS_SOURCE"
 
 postcondition_text="$(text_count "$ROOT_DIR/$RUNTIME_PROMPT_DIR/satisfied.md" "$SOURCES_DIR/$RUNTIME_PROMPT_SOURCE")"
 if [[ "$postcondition_text" != "1" ]]; then

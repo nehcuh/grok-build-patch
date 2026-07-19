@@ -47,20 +47,6 @@ Upstream cadence is not clock-aligned: `grokkybara[bot]` pushes
 between pushes, irregular UTC hours). Polling is the only hook we have —
 we do not control `xai-org/grok-build` webhooks.
 
-## Runtime: read_file absolute path
-
-Aligns Grok `read_file` with Claude Code `FileReadTool` path contract
-(`/Users/dio/Sources/agents/claude-code/src/tools/FileReadTool/`):
-
-- description: `must be an absolute path, not a relative path`
-- param: `The absolute path to the file to read`
-
-`patches/runtime/read-file-absolute/` (conditional) rewrites only those
-two strings. The description seam uses the templated param name
-`${{ params.read.target_file }}` (upstream: "Template hardcoded param
-names in server-native tool descriptions"); the schema param name stays
-`target_file`. Wording matches Claude Code FileReadTool.
-
 ## Runtime: hash-id skill tool
 
 The upstream skill listing exposes absolute paths but does not provide a skill
