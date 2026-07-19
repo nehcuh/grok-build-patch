@@ -51,5 +51,7 @@ Aligns Grok `read_file` with Claude Code `FileReadTool` path contract
 - param: `The absolute path to the file to read`
 
 `patches/runtime/read-file-absolute/` (conditional) rewrites only those
-two strings. Parameter name stays `target_file` (Grok); wording matches
-Claude Code.
+two strings. The description seam uses the templated param name
+`${{ params.read.target_file }}` (upstream: "Template hardcoded param
+names in server-native tool descriptions"); the schema param name stays
+`target_file`. Wording matches Claude Code FileReadTool.

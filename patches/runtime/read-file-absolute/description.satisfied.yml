@@ -4,4 +4,4 @@ severity: info
 message: read_file description already requires absolute path (Claude Code FileReadTool).
 rule:
   kind: raw_string_literal
-  regex: The target_file parameter must be an absolute path, not a relative path
+  regex: The \$\{\{ params\.read\.target_file \}\} parameter must be an absolute path, not a relative path
